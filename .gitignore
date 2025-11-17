@@ -1,9 +1,18 @@
+# ============================================================================
+# .gitignore for Google Cloud Dataflow Pipeline Template
+# Custom Data Synchronization Pipeline (PostgreSQL, MongoDB, BigQuery)
+# ============================================================================
+
+# ============================================================================
 # Python
+# ============================================================================
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
+
+# Distribution / packaging
 build/
 develop-eggs/
 dist/
@@ -23,31 +32,259 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# Virtual environments
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ============================================================================
+# Virtual Environments
+# ============================================================================
 venv/
 env/
 ENV/
 env.bak/
 venv.bak/
+.venv/
+pipenv/
+.virtualenv/
 
-# IDEs
+# ============================================================================
+# IDEs and Editors
+# ============================================================================
+# VSCode
 .vscode/
+*.code-workspace
+
+# PyCharm / IntelliJ
 .idea/
+*.iml
+*.iws
+*.ipr
+
+# Vim
 *.swp
 *.swo
 *~
-.DS_Store
+.vim/
 
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# ============================================================================
 # Testing
+# ============================================================================
 .pytest_cache/
 .coverage
+.coverage.*
 htmlcov/
 .tox/
 .hypothesis/
+nosetests.xml
+coverage.xml
+*.cover
+.cache
 
-# Credentials (never commit secrets)
-.env
+# Test data and outputs
+test_output/
+test_data/
+test_results/
+*.test.log
+
+# ============================================================================
+# Google Cloud & Dataflow Specific
+# ============================================================================
+# Credentials (NEVER commit these!)
 *.key
 *.pem
+*.p12
 credentials.json
 service-account.json
+service-account-*.json
+*-credentials.json
+*-service-account.json
+application_default_credentials.json
+.gcloud/
+gcloud-credentials.json
+
+# Google Cloud SDK
+.config/gcloud/
+
+# Dataflow staging and temporary files
+.beam/
+beam-temp-*
+staging/
+temp/
+tmp/
+dataflow-staging/
+dataflow-temp/
+
+# Dataflow pipeline state
+pipeline-state/
+.dataflow/
+
+# Local Beam DirectRunner output
+DirectPipelineResult/
+direct_runner_temp/
+
+# BigQuery temporary files
+.bigquery/
+bq-temp-*/
+
+# ============================================================================
+# Docker
+# ============================================================================
+# Docker override files (for local development)
+docker-compose.override.yml
+.dockerignore.local
+
+# Docker build artifacts (if any)
+.docker/
+docker-build/
+
+# ============================================================================
+# Database Specific
+# ============================================================================
+# Local database dumps (for testing)
+*.sql
+*.dump
+*.bak
+*.backup
+
+# PostgreSQL
+*.postgresql
+pgdata/
+
+# MongoDB
+*.mongodb
+mongodata/
+dump/
+
+# SQLite (if used for local testing)
+*.sqlite
+*.sqlite3
+*.db
+
+# Database configuration (local only)
+database.ini
+db-config.local.json
+connection-strings.json
+
+# ============================================================================
+# Project Specific
+# ============================================================================
+# Local environment variables
+.env
+.env.local
+.env.*.local
+.envrc
+
+# Local configuration overrides
+config.local.json
+settings.local.json
+pipeline-config.local.json
+
+# Logs
+logs/
+*.log
+*.log.*
+pipeline-*.log
+dataflow-*.log
+
+# Local test/development data
+test-data/
+sample-data/
+local-data/
+data/
+*.csv
+*.json.local
+*.parquet
+
+# Scheduler configuration (generated)
+scheduler-config.local.json
+cron-config.local.json
+
+# Template metadata (if generated locally)
+template-metadata.local.json
+
+# Pipeline run artifacts
+run-artifacts/
+job-artifacts/
+pipeline-output/
+
+# Monitoring and profiling
+.profile
+*.prof
+.benchmarks/
+
+# ============================================================================
+# Cloud Resources (if generated locally for testing)
+# ============================================================================
+# Terraform state (if infrastructure as code is added)
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraformrc
+terraform.tfvars
+
+# Pulumi (alternative IaC)
+.pulumi/
+Pulumi.*.yaml
+
+# ============================================================================
+# Documentation artifacts
+# ============================================================================
+# Generated documentation (keep source docs, ignore builds)
+docs/_build/
+docs/.doctrees/
+site/
+
+# Jupyter Notebooks checkpoints
+.ipynb_checkpoints/
+*.ipynb
+
+# ============================================================================
+# Miscellaneous
+# ============================================================================
+# Backup files
+*.bak
+*.tmp
+*.temp
+*~
+
+# Archives (don't commit large archives)
+*.tar
+*.tar.gz
+*.zip
+*.rar
+*.7z
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ============================================================================
+# Project Notes (optional - uncomment if you create these)
+# ============================================================================
+# NOTES.md
+# TODO.local.md
+# SCRATCH.md
