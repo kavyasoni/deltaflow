@@ -28,6 +28,6 @@ pytest-cov==5.0.0
 mock==5.1.0
 
 # Additional utilities (Latest secure versions)
-requests==2.32.3
+requests==2.32.4
 jsonschema==4.23.0
 typing-extensions==4.12.2 
