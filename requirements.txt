@@ -1,0 +1,33 @@
+# Apache Beam and Google Cloud dependencies (Latest supported versions)
+# ✅ RESOLVED: Base image already includes Apache Beam 2.66.0 (NO DATA LOSS BUG)
+# Based on: https://cloud.google.com/dataflow/docs/support/sdk-version-support-status
+# Last updated: January 2025 (Critical security confirmed safe)
+
+# Additional Google Cloud dependencies
+google-cloud-bigquery==3.25.0
+google-cloud-storage==2.18.0
+google-cloud-logging==3.11.0
+
+# Database connectivity (Latest stable versions)
+psycopg2-binary==2.9.9
+PyMySQL==1.1.1
+pymongo==4.8.0
+
+# Data processing and utilities (Apache Beam compatible versions)
+pandas==2.2.2
+numpy==1.26.4
+pyarrow==14.0.2
+
+# Configuration and utilities (Latest versions)
+pyyaml==6.0.2
+python-dotenv==1.0.1
+
+# Testing dependencies (Latest versions)
+pytest==8.3.2
+pytest-cov==5.0.0
+mock==5.1.0
+
+# Additional utilities (Latest secure versions)
+requests==2.32.3
+jsonschema==4.23.0
+typing-extensions==4.12.2 

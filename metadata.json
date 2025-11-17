@@ -1,0 +1,311 @@
+{
+  "name": "Custom Data Synchronization Pipeline",
+  "description": "A flexible Dataflow template for synchronizing data between PostgreSQL, BigQuery, and other sources with custom transformations",
+  "streaming": false,
+  "supportsAtLeastOnce": false,
+  "supportsExactlyOnce": true,
+  "defaultEnvironment": {},
+  "parameters": [
+    {
+      "name": "postgresql_host",
+      "label": "PostgreSQL Host",
+      "helpText": "PostgreSQL server hostname or IP address",
+      "paramType": "TEXT",
+      "isOptional": true,
+      "regexes": ["^[a-zA-Z0-9.-]+$"]
+    },
+    {
+      "name": "postgresql_port",
+      "label": "PostgreSQL Port",
+      "helpText": "PostgreSQL server port (default: 5432)",
+      "paramType": "TEXT",
+      "isOptional": true,
+      "regexes": ["^[0-9]+$"]
+    },
+    {
+      "name": "postgresql_database",
+      "label": "PostgreSQL Database",
+      "helpText": "PostgreSQL database name",
+      "paramType": "TEXT",
+      "isOptional": true
+    },
+    {
+      "name": "postgresql_username",
+      "label": "PostgreSQL Username",
+      "helpText": "PostgreSQL username for authentication",
+      "paramType": "TEXT",
+      "isOptional": true
+    },
+    {
+      "name": "postgresql_password",
+      "label": "PostgreSQL Password",
+      "helpText": "PostgreSQL password for authentication",
+      "paramType": "TEXT",
+      "isOptional": true
+    },
+    {
+      "name": "postgresql_table",
+      "label": "PostgreSQL Table",
+      "helpText": "PostgreSQL table name (optional, can be auto-detected from query or schema)",
+      "paramType": "TEXT",
+      "isOptional": true,
+      "regexes": ["^[a-zA-Z_][a-zA-Z0-9_]*$"]
+    },
+    {
+      "name": "postgresql_query",
+      "label": "PostgreSQL Query",
+      "helpText": "SQL query to read data from PostgreSQL",
+      "paramType": "TEXT",
+      "isOptional": true
+    },
+    {
+      "name": "mongodb_host",
+      "label": "MongoDB Host",
+      "helpText": "MongoDB server hostname or IP address",
+      "paramType": "TEXT",
+      "isOptional": true
+    },
+    {
+      "name": "mongodb_port",
+      "label": "MongoDB Port",
+      "helpText": "MongoDB port (default: 27017)",
+      "paramType": "TEXT",
+      "isOptional": true
+    },
+    {
+      "name": "mongodb_database",
+      "label": "MongoDB Database",
+      "helpText": "MongoDB database name",
+      "paramType": "TEXT",
+      "isOptional": true
+    },
+    {
+      "name": "mongodb_collection",
+      "label": "MongoDB Collection",
+      "helpText": "MongoDB collection name",
+      "paramType": "TEXT",
+      "isOptional": true
+    },
+    {
+      "name": "mongodb_username",
+      "label": "MongoDB Username",
+      "helpText": "MongoDB username (optional for authentication)",
+      "paramType": "TEXT",
+      "isOptional": true
+    },
+    {
+      "name": "mongodb_password",
+      "label": "MongoDB Password",
+      "helpText": "MongoDB password (optional for authentication)",
+      "paramType": "TEXT",
+      "isOptional": true
+    },
+    {
+      "name": "mongodb_connection_string",
+      "label": "MongoDB Connection String",
+      "helpText": "Complete MongoDB connection string (overrides individual connection parameters)",
+      "paramType": "TEXT",
+      "isOptional": true
+    },
+    {
+      "name": "mongodb_query",
+      "label": "MongoDB Query",
+      "helpText": "MongoDB query as JSON string (e.g., {\"status\": \"active\"})",
+      "paramType": "TEXT",
+      "isOptional": true
+    },
+    {
+      "name": "mongodb_projection",
+      "label": "MongoDB Projection",
+      "helpText": "MongoDB projection as JSON string to limit fields (e.g., {\"name\": 1, \"email\": 1})",
+      "paramType": "TEXT",
+      "isOptional": true
+    },
+    {
+      "name": "source_bigquery_project",
+      "label": "Source BigQuery Project",
+      "helpText": "Source BigQuery project ID (can be different from pipeline project)",
+      "paramType": "TEXT",
+      "isOptional": true,
+      "regexes": ["^[a-z0-9][a-z0-9\\-]{4,28}[a-z0-9]$"]
+    },
+    {
+      "name": "source_bigquery_dataset",
+      "label": "Source BigQuery Dataset",
+      "helpText": "Source BigQuery dataset name",
+      "paramType": "TEXT",
+      "isOptional": true,
+      "regexes": ["^[a-zA-Z0-9_]+$"]
+    },
+    {
+      "name": "source_bigquery_table",
+      "label": "Source BigQuery Table",
+      "helpText": "Source BigQuery table name",
+      "paramType": "TEXT",
+      "isOptional": true,
+      "regexes": ["^[a-zA-Z0-9_]+$"]
+    },
+    {
+      "name": "source_bigquery_query",
+      "label": "Source BigQuery Query",
+      "helpText": "BigQuery SQL query for reading data (alternative to table)",
+      "paramType": "TEXT",
+      "isOptional": true
+    },
+    {
+      "name": "destination_bigquery_project",
+      "label": "Destination BigQuery Project",
+      "helpText": "Destination BigQuery project ID",
+      "paramType": "TEXT",
+      "isOptional": false,
+      "regexes": ["^[a-z0-9][a-z0-9\\-]{4,28}[a-z0-9]$"]
+    },
+    {
+      "name": "destination_bigquery_dataset",
+      "label": "Destination BigQuery Dataset",
+      "helpText": "Destination BigQuery dataset name",
+      "paramType": "TEXT",
+      "isOptional": false,
+      "regexes": ["^[a-zA-Z0-9_]+$"]
+    },
+    {
+      "name": "destination_bigquery_table",
+      "label": "Destination BigQuery Table",
+      "helpText": "Destination BigQuery table name",
+      "paramType": "TEXT",
+      "isOptional": false,
+      "regexes": ["^[a-zA-Z0-9_]+$"]
+    },
+    {
+      "name": "data_source",
+      "label": "Data Source Type",
+      "helpText": "Type of data source: postgresql, mongodb, bigquery, or multiple (comma-separated)",
+      "paramType": "TEXT",
+      "isOptional": true,
+      "regexes": ["^(postgresql|mongodb|bigquery|[a-zA-Z, ]+)$"]
+    },
+    {
+      "name": "transformation_config",
+      "label": "Transformation Configuration",
+      "helpText": "JSON string with transformation configuration",
+      "paramType": "TEXT",
+      "isOptional": true
+    },
+    {
+      "name": "write_disposition",
+      "label": "Write Disposition",
+      "helpText": "BigQuery write disposition: WRITE_APPEND, WRITE_TRUNCATE, or WRITE_EMPTY",
+      "paramType": "TEXT",
+      "isOptional": true,
+      "regexes": ["^(WRITE_APPEND|WRITE_TRUNCATE|WRITE_EMPTY)$"]
+    },
+    {
+      "name": "create_disposition",
+      "label": "Create Disposition",
+      "helpText": "BigQuery create disposition: CREATE_IF_NEEDED or CREATE_NEVER",
+      "paramType": "TEXT",
+      "isOptional": true,
+      "regexes": ["^(CREATE_IF_NEEDED|CREATE_NEVER)$"]
+    },
+    {
+      "name": "batch_size",
+      "label": "Batch Size",
+      "helpText": "Batch size for data processing (default: 1000)",
+      "paramType": "TEXT",
+      "isOptional": true,
+      "regexes": ["^[0-9]+$"]
+    },
+    {
+      "name": "max_retries",
+      "label": "Max Retries",
+      "helpText": "Maximum number of retries for failed operations (default: 3)",
+      "paramType": "TEXT",
+      "isOptional": true,
+      "regexes": ["^[0-9]+$"]
+    },
+    {
+      "name": "enable_smart_sync",
+      "label": "Enable Smart Sync",
+      "helpText": "Enable smart sync: query destination BigQuery table for latest timestamp (true/false)",
+      "paramType": "TEXT",
+      "isOptional": true,
+      "regexes": ["^(true|false)$"]
+    },
+    {
+      "name": "smart_sync_timestamp_column",
+      "label": "Smart Sync Timestamp Column",
+      "helpText": "Column name to use for smart sync timestamp detection (default: updated_at)",
+      "paramType": "TEXT",
+      "isOptional": true,
+      "regexes": ["^[a-zA-Z_][a-zA-Z0-9_]*$"]
+    },
+    {
+      "name": "smart_sync_fallback_hours",
+      "label": "Smart Sync Fallback Hours",
+      "helpText": "Hours to look back if destination table is empty (default: 24)",
+      "paramType": "TEXT",
+      "isOptional": true,
+      "regexes": ["^[0-9]+$"]
+    },
+    {
+      "name": "postgresql_base_query",
+      "label": "PostgreSQL Base Query for Smart Sync",
+      "helpText": "Base PostgreSQL query template with {start_timestamp} and {end_timestamp} placeholders",
+      "paramType": "TEXT",
+      "isOptional": true
+    },
+    {
+      "name": "sync_all_on_empty_table",
+      "label": "Sync All Data on Empty Table",
+      "helpText": "Sync all historical data when destination table is empty (true/false, default: true)",
+      "paramType": "TEXT",
+      "isOptional": true,
+      "regexes": ["^(true|false)$"]
+    },
+    {
+      "name": "fallback_days",
+      "label": "Fallback Days",
+      "helpText": "Days to look back when sync_all_on_empty_table=false (default: 1 day)",
+      "paramType": "TEXT",
+      "isOptional": true,
+      "regexes": ["^[0-9]+$"]
+    },
+    {
+      "name": "enable_auto_schema",
+      "label": "Enable Auto Schema Detection",
+      "helpText": "Enable automatic schema detection and BigQuery table creation (true/false, default: true)",
+      "paramType": "TEXT",
+      "isOptional": true,
+      "regexes": ["^(true|false)$"]
+    },
+    {
+      "name": "source_table_for_schema",
+      "label": "Source Table for Schema Detection",
+      "helpText": "Source table name for schema detection (PostgreSQL: schema.table, BigQuery: project.dataset.table)",
+      "paramType": "TEXT",
+      "isOptional": true
+    },
+    {
+      "name": "partition_field",
+      "label": "Partition Field",
+      "helpText": "Field to use for BigQuery table partitioning (e.g., created_at, updated_at)",
+      "paramType": "TEXT",
+      "isOptional": true
+    },
+    {
+      "name": "clustering_fields",
+      "label": "Clustering Fields",
+      "helpText": "Comma-separated list of fields for BigQuery table clustering (e.g., id,status)",
+      "paramType": "TEXT",
+      "isOptional": true
+    },
+    {
+      "name": "delete_existing_table",
+      "label": "Delete Existing Table",
+      "helpText": "Delete existing BigQuery table before creating new one (true/false, default: false)",
+      "paramType": "TEXT",
+      "isOptional": true,
+      "regexes": ["^(true|false)$"]
+    }
+  ]
+}
