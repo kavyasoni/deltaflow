@@ -257,10 +257,13 @@ No test files exist yet. When adding tests:
 ## Key Dependencies
 
 - **Apache Beam 2.66.0+**: Core framework (critical: 2.66.0 fixes data loss bug)
-- **psycopg2-binary 2.9.9**: PostgreSQL connectivity
-- **pymongo 4.8.0**: MongoDB connectivity
-- **google-cloud-bigquery 3.25.0**: BigQuery operations
-- **Python 3.9+**: Required runtime version
+- **psycopg2-binary 2.9.11**: PostgreSQL connectivity
+- **pymongo 4.15.4**: MongoDB connectivity
+- **google-cloud-bigquery 3.38.0**: BigQuery operations
+- **numpy 2.3.5**: Numerical computing (requires Python 3.11+)
+- **pandas 2.3.3**: Data manipulation and analysis
+- **pyarrow 22.0.0**: Apache Arrow Python bindings
+- **Python 3.11+**: Required runtime version (updated from 3.9+ due to numpy 2.x requirements)
 
 ## Security Notes
 
