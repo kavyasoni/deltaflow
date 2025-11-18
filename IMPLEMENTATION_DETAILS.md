@@ -754,8 +754,8 @@ errors = result.errors
 
 ---
 
-**Document Version**: 1.0.0  
-**Last Updated**: January 2025  
-**Maintainer**: Data Engineering Team
+**Document Version**: 1.0.0
+**Last Updated**: January 2025
+**Maintainer**: [kavyasoni](https://github.com/kavyasoni/)
 
 This documentation provides a comprehensive technical reference for understanding, maintaining, and extending the Custom Dataflow Pipeline Template. For specific implementation questions, refer to the inline code comments and the extensive logging throughout the pipeline.

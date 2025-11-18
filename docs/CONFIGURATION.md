@@ -1134,7 +1134,7 @@ write_disposition=WRITE_TRUNCATE  # Data loss risk!
 
 **Document Version**: 1.0.0
 **Last Updated**: January 2025
-**Maintainer**: Data Engineering Team
+**Maintainer**: [kavyasoni](https://github.com/kavyasoni/)
 
 For architecture details, see [ARCHITECTURE.md](ARCHITECTURE.md).
 For deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
