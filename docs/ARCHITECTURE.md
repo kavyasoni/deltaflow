@@ -880,7 +880,7 @@ logger.error(f"Error reading from source: {error}")
 
 **Document Version**: 1.0.0
 **Last Updated**: January 2025
-**Maintainer**: Data Engineering Team
+**Maintainer**: [kavyasoni](https://github.com/kavyasoni/)
 
 For implementation details, see [main.py](../main.py).
 For deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).

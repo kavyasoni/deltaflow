@@ -1007,7 +1007,7 @@ gcloud dataflow jobs describe $JOB_ID --region=us-central1 > job_config_backup.j
 
 **Document Version**: 1.0.0
 **Last Updated**: January 2025
-**Maintainer**: Data Engineering Team
+**Maintainer**: [kavyasoni](https://github.com/kavyasoni/)
 
 For architecture details, see [ARCHITECTURE.md](ARCHITECTURE.md).
 For configuration reference, see [CONFIGURATION.md](CONFIGURATION.md).

@@ -12,7 +12,7 @@ Key Features:
 - Cross-Project: Secure VPC network configuration
 - Production-Ready: Comprehensive error handling and monitoring
 
-Author: Data Engineering Team
+Author: kavyasoni (https://github.com/kavyasoni/)
 Version: 1.0.0
 License: Apache 2.0
 """
