@@ -4,7 +4,7 @@
 
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/your-org/deltaflow)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![Apache Beam](https://img.shields.io/badge/Apache%20Beam-2.66.0%2B-orange.svg)](https://beam.apache.org/)
 
 DeltaFlow is a production-ready Google Cloud Dataflow template for intelligent, automated cross-platform data synchronization. Built on Apache Beam, it provides seamless data pipelines between PostgreSQL, MongoDB, and BigQuery with zero-configuration schema detection and intelligent incremental syncing.

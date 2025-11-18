@@ -25,7 +25,7 @@ This comprehensive guide covers everything you need to deploy DeltaFlow to produ
 # Check installed versions
 gcloud version              # Google Cloud SDK 400.0.0+
 docker --version            # Docker 20.10+
-python --version            # Python 3.9+
+python --version            # Python 3.11+ (required for NumPy 2.x)
 ```
 
 ### Install Google Cloud SDK

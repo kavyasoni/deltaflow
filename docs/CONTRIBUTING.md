@@ -31,7 +31,7 @@ This project and everyone participating in it is governed by our [Code of Conduc
 
 ### Prerequisites
 
-- Python 3.9 or higher
+- Python 3.11 or higher (required for NumPy 2.x compatibility)
 - Google Cloud SDK (for Dataflow testing)
 - Docker (for container builds)
 - Git

@@ -16,15 +16,15 @@ setup(
     author_email='https://github.com/kavyasoni/',
     packages=find_packages(),
     install_requires=requirements,
-    python_requires='>=3.9',
+    python_requires='>=3.11',
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: Apache Software License',
-        'Programming Language :: Python :: 3.9',
-        'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: 3.11',
         'Programming Language :: Python :: 3.12',
+        'Programming Language :: Python :: 3.13',
+        'Programming Language :: Python :: 3.14',
     ],
     keywords='dataflow apache-beam bigquery postgresql data-pipeline',
     project_urls={
