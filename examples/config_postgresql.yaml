@@ -1,0 +1,235 @@
+# PostgreSQL to BigQuery Sync Configuration
+# This YAML file demonstrates all available parameters for syncing PostgreSQL data to BigQuery
+# Usage: Convert to JSON for use with gcloud dataflow flex-template run --parameters-file
+
+# =============================================================================
+# DATA SOURCE CONFIGURATION
+# =============================================================================
+
+# Specify the data source type (postgresql, mongodb, bigquery, or comma-separated for multiple)
+data_source: postgresql
+
+# =============================================================================
+# POSTGRESQL CONNECTION PARAMETERS
+# =============================================================================
+
+# PostgreSQL server hostname or IP address
+postgresql_host: 10.128.0.5
+
+# PostgreSQL server port (default: 5432)
+postgresql_port: "5432"
+
+# PostgreSQL database name
+postgresql_database: production_db
+
+# PostgreSQL authentication credentials
+# SECURITY NOTE: In production, use Secret Manager instead of plain text
+postgresql_username: dataflow_reader
+postgresql_password: "${SECRET_MANAGER_POSTGRESQL_PASSWORD}"
+
+# PostgreSQL table name (optional if query is provided)
+postgresql_table: users
+
+# SQL query to read data from PostgreSQL
+# Use this for custom queries, joins, or filtering
+postgresql_query: "SELECT id, email, name, status, created_at, updated_at FROM users WHERE status = 'active'"
+
+# =============================================================================
+# BIGQUERY DESTINATION PARAMETERS
+# =============================================================================
+
+# Destination BigQuery project ID
+destination_bigquery_project: my-gcp-project
+
+# Destination BigQuery dataset name
+destination_bigquery_dataset: analytics
+
+# Destination BigQuery table name
+destination_bigquery_table: users_sync
+
+# Write disposition controls how data is written to the destination table
+# Options:
+#   WRITE_APPEND: Append data to existing table (default)
+#   WRITE_TRUNCATE: Overwrite table with new data
+#   WRITE_EMPTY: Only write if table is empty (fail if table exists with data)
+write_disposition: WRITE_APPEND
+
+# Create disposition controls whether to create table if it doesn't exist
+# Options:
+#   CREATE_IF_NEEDED: Create table if it doesn't exist (default)
+#   CREATE_NEVER: Fail if table doesn't exist
+create_disposition: CREATE_IF_NEEDED
+
+# =============================================================================
+# AUTO-SCHEMA DETECTION (Recommended)
+# =============================================================================
+
+# Enable automatic schema detection from source database
+# When enabled, DeltaFlow will:
+# 1. Query source table schema from information_schema
+# 2. Map source types to BigQuery types
+# 3. Create optimized BigQuery table with partitioning and clustering
+enable_auto_schema: "true"
+
+# Source table name for schema detection
+# For PostgreSQL: schema.table (e.g., public.users)
+source_table_for_schema: public.users
+
+# Field to use for BigQuery table partitioning
+# Partitioning improves query performance and reduces costs
+# Recommended: Use a TIMESTAMP or DATE column (default: updated_at)
+partition_field: updated_at
+
+# Comma-separated list of fields for BigQuery table clustering
+# Clustering further optimizes queries that filter on these columns
+# Recommended: Use high-cardinality columns frequently used in WHERE clauses
+clustering_fields: id,status
+
+# Delete existing BigQuery table before creating new one
+# WARNING: Use with caution - this will delete all existing data
+# Set to "true" for full refresh scenarios only
+delete_existing_table: "false"
+
+# =============================================================================
+# SMART SYNC (Incremental Updates)
+# =============================================================================
+
+# Enable Smart Sync for incremental data synchronization
+# When enabled, only new/updated records since last sync are transferred
+# This dramatically reduces data transfer and processing time
+enable_smart_sync: "false"
+
+# Column name to use for timestamp-based sync detection
+# Must be a timestamp column that tracks record updates
+smart_sync_timestamp_column: updated_at
+
+# Base query template with timestamp placeholders for Smart Sync
+# Placeholders {start_timestamp} and {end_timestamp} are automatically replaced
+# Example: "SELECT * FROM users WHERE updated_at > '{start_timestamp}' AND updated_at <= '{end_timestamp}'"
+# postgresql_base_query: "SELECT * FROM users WHERE updated_at > '{start_timestamp}' AND updated_at <= '{end_timestamp}' ORDER BY updated_at ASC"
+
+# Behavior when destination table is empty
+# true: Sync all historical data (uses start_timestamp='1900-01-01 00:00:00')
+# false: Use fallback_days to limit historical sync
+sync_all_on_empty_table: "true"
+
+# Days to look back when destination table is empty and sync_all_on_empty_table=false
+# Only used if sync_all_on_empty_table is false
+fallback_days: "7"
+
+# Hours to look back if Smart Sync query fails (fallback mechanism)
+# This ensures pipeline doesn't fail completely if timestamp detection fails
+smart_sync_fallback_hours: "24"
+
+# =============================================================================
+# DATA TRANSFORMATION (Optional)
+# =============================================================================
+
+# JSON string with transformation configuration
+# Supports field mapping, type conversion, and custom transformations
+# Example:
+# transformation_config: |
+#   {
+#     "field_mappings": {
+#       "old_column_name": "new_column_name",
+#       "user_id": "id"
+#     },
+#     "type_conversions": {
+#       "price": "FLOAT",
+#       "quantity": "INTEGER"
+#     }
+#   }
+
+# =============================================================================
+# ADVANCED CONFIGURATION
+# =============================================================================
+
+# Batch size for data processing
+# Higher values improve throughput but increase memory usage
+# Recommended: 1000-5000 for most use cases
+batch_size: 1000
+
+# Maximum number of retries for failed operations
+# Applies to database connections and BigQuery writes
+max_retries: 3
+
+# =============================================================================
+# DATAFLOW PIPELINE CONFIGURATION (Runtime Parameters)
+# =============================================================================
+# These parameters are typically set when launching the Dataflow job
+# and control the Dataflow execution environment
+
+# Example Dataflow runtime parameters (not in this config file):
+# --region=us-central1
+# --worker_machine_type=n1-standard-4
+# --num_workers=2
+# --max_num_workers=10
+# --autoscaling_algorithm=THROUGHPUT_BASED
+# --staging_location=gs://my-bucket/staging
+# --temp_location=gs://my-bucket/temp
+# --subnetwork=regions/us-central1/subnetworks/my-subnet
+# --service_account_email=dataflow-sa@my-project.iam.gserviceaccount.com
+
+# =============================================================================
+# USAGE EXAMPLES
+# =============================================================================
+
+# 1. Convert YAML to JSON (gcloud requires JSON):
+#    python -c "import yaml, json, sys; print(json.dumps(yaml.safe_load(open('config_postgresql.yaml'))))" > config_postgresql.json
+
+# 2. Run with Dataflow template:
+#    gcloud dataflow flex-template run postgresql-sync-job-$(date +%Y%m%d-%H%M%S) \
+#      --template-file-gcs-location=gs://${BUCKET_NAME}/templates/${TEMPLATE_NAME} \
+#      --region=us-central1 \
+#      --parameters-file=config_postgresql.json \
+#      --additional-experiments=enable_stackdriver_agent_metrics
+
+# 3. Test locally with DirectRunner:
+#    python main.py \
+#      --runner=DirectRunner \
+#      --data_source=postgresql \
+#      --postgresql_host=localhost \
+#      --postgresql_database=testdb \
+#      --postgresql_username=user \
+#      --postgresql_password=pass \
+#      --postgresql_query="SELECT * FROM users LIMIT 100" \
+#      --destination_bigquery_project=my-project \
+#      --destination_bigquery_dataset=test \
+#      --destination_bigquery_table=users_test \
+#      --enable_auto_schema=false
+
+# =============================================================================
+# PRODUCTION BEST PRACTICES
+# =============================================================================
+
+# 1. Security:
+#    - Store credentials in GCP Secret Manager
+#    - Use IAM service accounts with least privilege
+#    - Enable VPC Service Controls for data exfiltration prevention
+#    - Use private IPs and Cloud SQL Proxy for database connections
+
+# 2. Reliability:
+#    - Enable Smart Sync for incremental updates
+#    - Set appropriate max_retries (3-5)
+#    - Use WRITE_APPEND with Smart Sync for idempotent pipelines
+#    - Monitor Dataflow job metrics and set up alerts
+
+# 3. Performance:
+#    - Use Auto-Schema with partitioning and clustering
+#    - Tune batch_size based on record size (1000-5000)
+#    - Enable autoscaling with THROUGHPUT_BASED algorithm
+#    - Use regional resources (avoid cross-region data transfer)
+
+# 4. Cost Optimization:
+#    - Enable Smart Sync to minimize data transfer
+#    - Use appropriate worker machine types (n1-standard-2 or n1-standard-4)
+#    - Set max_num_workers to prevent runaway costs
+#    - Use BigQuery partitioning to reduce query costs
+#    - Schedule jobs during off-peak hours if possible
+
+# 5. Monitoring:
+#    - Set up Cloud Monitoring dashboards for Dataflow metrics
+#    - Configure alerting for job failures
+#    - Monitor BigQuery table size and query costs
+#    - Track sync latency and data freshness
+#    - Review Dataflow job logs regularly

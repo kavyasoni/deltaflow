@@ -1,296 +1,455 @@
-# DeltaFlow Examples
+# DeltaFlow Examples and Scripts
 
-This directory contains example configurations for running the DeltaFlow custom Dataflow template in various scenarios.
+This directory contains comprehensive examples, configuration files, and scripts for using DeltaFlow in development and production environments.
 
-## Available Examples
+## 📁 Directory Contents
 
-### 1. PostgreSQL to BigQuery (`postgresql_to_bigquery.sh`)
+### Configuration Examples
 
-Basic synchronization from PostgreSQL to BigQuery with automatic schema detection.
+- **config_postgresql.yaml** - Complete PostgreSQL to BigQuery sync configuration with all parameters documented
+- **config_mongodb.yaml** - MongoDB to BigQuery sync configuration with BSON handling examples
+- **config_smart_sync.yaml** - Smart Sync incremental update configuration with Cloud Scheduler integration
 
-**Use case**: One-time or scheduled sync of PostgreSQL tables to BigQuery for analytics.
+### Executable Scripts
 
-**Features demonstrated**:
-- PostgreSQL connection configuration
-- Custom SQL query for data extraction
-- Auto-schema detection
-- Basic BigQuery write configuration
+- **run_from_python.py** - Python script demonstrating programmatic pipeline execution (6 examples)
+- **local_test.sh** - Shell script for local testing with DirectRunner (5 test scenarios)
+- **production_deployment.sh** - Automated production deployment script (Docker build, template deployment, IAM setup)
 
-**Run the example**:
-```bash
-# Edit the script to set your configuration
-vim postgresql_to_bigquery.sh
+## 🚀 Quick Start
 
-# Make it executable
-chmod +x postgresql_to_bigquery.sh
+### 1. Local Testing (DirectRunner)
 
-# Run it
-./postgresql_to_bigquery.sh
-```
-
-**Key parameters to customize**:
-- `PROJECT_ID`: Your GCP project ID
-- `PG_HOST`, `PG_DATABASE`, `PG_USERNAME`, `PG_PASSWORD`: PostgreSQL connection details
-- `PG_QUERY`: SQL query to extract data
-- `BQ_DATASET`, `BQ_TABLE`: BigQuery destination
-
----
-
-### 2. MongoDB to BigQuery (`mongodb_to_bigquery.sh`)
-
-Synchronization from MongoDB to BigQuery with JSON field handling and schema detection.
-
-**Use case**: Sync MongoDB collections to BigQuery for analytics and reporting.
-
-**Features demonstrated**:
-- MongoDB connection via URI
-- Query filtering with MongoDB query syntax
-- Field projection to select specific fields
-- Automatic handling of ObjectId and nested documents
-- JSON type field mapping
-
-**Run the example**:
-```bash
-# Edit the script to set your configuration
-vim mongodb_to_bigquery.sh
-
-# Make it executable
-chmod +x mongodb_to_bigquery.sh
-
-# Run it
-./mongodb_to_bigquery.sh
-```
-
-**Key parameters to customize**:
-- `MONGO_URI`: MongoDB connection string
-- `MONGO_DATABASE`, `MONGO_COLLECTION`: MongoDB source
-- `MONGO_FILTER`: MongoDB query filter (JSON)
-- `MONGO_PROJECTION`: Field projection (optional)
-- `BQ_DATASET`, `BQ_TABLE`: BigQuery destination
-
-**MongoDB-specific notes**:
-- ObjectId fields are automatically converted to STRING
-- Nested documents are stored as JSON type fields in BigQuery
-- Arrays are preserved and mapped to REPEATED or JSON fields
-- BSON types are handled automatically
-
----
-
-### 3. Smart Sync Example (`smart_sync_example.sh`)
-
-Incremental synchronization using Smart Sync feature with optional Cloud Scheduler setup.
-
-**Use case**: Automated incremental sync that only processes new/updated records since the last run.
-
-**Features demonstrated**:
-- Smart Sync configuration
-- Timestamp-based incremental updates
-- Empty table handling (sync all historical data)
-- Fallback configuration for error scenarios
-- Cloud Scheduler integration for automated runs
-
-**How Smart Sync works**:
-1. **First run** (empty BigQuery table):
-   - If `sync_all_on_empty_table=true`: Syncs all historical data from source
-   - If `false`: Syncs data from last N days (configured via `fallback_days`)
-
-2. **Subsequent runs**:
-   - Queries BigQuery: `SELECT MAX(updated_at) FROM destination_table`
-   - Syncs only records where `updated_at > MAX(updated_at)`
-   - Efficient - only processes new/changed data
-
-3. **Fallback behavior**:
-   - If Smart Sync fails (e.g., BigQuery query error), falls back to syncing last N days
-   - Ensures data continuity even with temporary issues
-
-**Run the example**:
-```bash
-# Edit the script to set your configuration
-vim smart_sync_example.sh
-
-# Make it executable
-chmod +x smart_sync_example.sh
-
-# Run it
-./smart_sync_example.sh
-
-# Optionally set up Cloud Scheduler when prompted
-```
-
-**Key parameters to customize**:
-- `PG_BASE_QUERY`: Query template with `{start_timestamp}` and `{end_timestamp}` placeholders
-- `TIMESTAMP_COLUMN`: Column name containing update timestamp
-- `ENABLE_SMART_SYNC`: Set to "true" to enable Smart Sync
-- `SYNC_ALL_ON_EMPTY`: Set to "true" to sync all data when destination table is empty
-- `FALLBACK_DAYS`: Number of days to sync if Smart Sync fails
-
-**Required query format**:
-```sql
-SELECT * FROM table_name
-WHERE updated_at > '{start_timestamp}'
-AND updated_at <= '{end_timestamp}'
-ORDER BY updated_at ASC
-```
-
-The placeholders `{start_timestamp}` and `{end_timestamp}` will be replaced at runtime.
-
----
-
-## Prerequisites
-
-Before running any example, ensure:
-
-1. **Template deployed**: The DeltaFlow template must be built and deployed to GCS
-   ```bash
-   # See main README.md for deployment instructions
-   ./deploy.sh
-   ```
-
-2. **Source database accessible**: Dataflow workers must be able to connect to your source database
-   - Use VPC configuration if database is in private network
-   - Configure firewall rules to allow Dataflow worker IPs
-   - Test connectivity from a GCE instance in the same network
-
-3. **BigQuery dataset created**:
-   ```bash
-   bq mk --dataset --location=US your-project:analytics
-   ```
-
-4. **IAM permissions configured**:
-   - Dataflow Service Account needs:
-     - `roles/dataflow.worker`
-     - `roles/bigquery.dataEditor` (on destination dataset)
-     - `roles/storage.objectAdmin` (on template bucket)
-
-5. **Secrets management** (production):
-   - Use Google Secret Manager for passwords
-   - Reference secrets in parameters: `${secret:projects/PROJECT_ID/secrets/SECRET_NAME/versions/latest}`
-
----
-
-## Customizing Examples
-
-### Network Configuration
-
-If your source database is in a private VPC network, add these parameters:
+Test the pipeline locally before deploying to GCP:
 
 ```bash
---parameters="network=projects/${PROJECT_ID}/global/networks/your-network" \
---parameters="subnetwork=regions/${REGION}/subnetworks/your-subnet"
+# Run all local tests
+cd examples
+./local_test.sh all
+
+# Run specific test
+./local_test.sh 1  # PostgreSQL basic sync
+./local_test.sh 2  # Auto-schema detection
+./local_test.sh 4  # Smart Sync
 ```
 
-### Dataflow Worker Configuration
+**Prerequisites:**
+- Python 3.9+ with dependencies installed (`pip install -r ../requirements.txt`)
+- Local PostgreSQL instance (for PostgreSQL tests)
+- GCP credentials configured (`gcloud auth application-default login`)
 
-Customize worker machine type and autoscaling:
+### 2. Python Programmatic Usage
+
+Run pipelines from Python code:
 
 ```bash
---parameters="machine_type=n1-standard-4" \
---parameters="max_num_workers=10" \
---parameters="num_workers=2"
+# Run example 1: Simple PostgreSQL sync
+python run_from_python.py --example 1
+
+# Run example 2: Smart Sync on Dataflow
+python run_from_python.py --example 2
+
+# Run all examples
+python run_from_python.py --all
 ```
 
-### Write Disposition Options
+**Use Cases:**
+- Integration with existing Python applications
+- Custom orchestration workflows
+- Automated testing
+- CI/CD pipeline integration
 
-Control how data is written to BigQuery:
+### 3. Production Deployment
 
-- `WRITE_APPEND`: Append to existing table (default, recommended for Smart Sync)
-- `WRITE_TRUNCATE`: Truncate table before writing (full refresh)
-- `WRITE_EMPTY`: Fail if table already has data
+Deploy DeltaFlow template to GCP:
 
 ```bash
---parameters="write_disposition=WRITE_TRUNCATE"  # For full refresh
+# Full deployment (builds Docker image, creates template, sets up IAM)
+export PROJECT_ID="your-gcp-project"
+export REGION="us-central1"
+./production_deployment.sh deploy
+
+# Or step by step:
+./production_deployment.sh build-only        # Just build Docker image
+./production_deployment.sh template-only     # Just deploy template
 ```
 
-### Schema Detection Options
+**What it does:**
+1. Enables required GCP APIs
+2. Creates GCS bucket for templates
+3. Creates service account with necessary permissions
+4. Builds Docker image
+5. Pushes image to Google Container Registry
+6. Deploys Dataflow Flex template
+7. Optionally creates Cloud Scheduler jobs
 
-Control automatic schema detection:
+## 📋 Configuration Files
 
+### config_postgresql.yaml
+
+Complete PostgreSQL sync configuration showing:
+- All 40+ pipeline parameters
+- Connection settings
+- Auto-schema configuration
+- Smart Sync setup (optional)
+- Production best practices
+- Security recommendations
+
+**Usage:**
 ```bash
---parameters="enable_auto_schema=true"      # Enable auto-schema (default)
---parameters="partition_field=updated_at"   # Partition table by this field
---parameters="clustering_fields=user_id,created_at"  # Cluster by these fields
+# Convert YAML to JSON for gcloud
+python -c "import yaml, json; print(json.dumps(yaml.safe_load(open('config_postgresql.yaml'))))" > config.json
+
+# Run with config file
+gcloud dataflow flex-template run my-job \
+  --template-file-gcs-location=gs://BUCKET/templates/TEMPLATE \
+  --region=us-central1 \
+  --parameters-file=config.json
 ```
 
----
+### config_mongodb.yaml
 
-## Monitoring and Debugging
+MongoDB-specific configuration covering:
+- MongoDB connection options (standalone, replica set, Atlas)
+- Query filters and projections
+- BSON type handling
+- Nested object/array handling
+- Performance tuning for large collections
 
-### View job status
+**Key Features:**
+- Connection string support for complex setups
+- MongoDB Atlas compatibility
+- Batch size optimization
+- Schema-less collection handling
+
+### config_smart_sync.yaml
+
+Smart Sync incremental update configuration:
+- Timestamp-based incremental sync
+- Empty table behavior (full vs. partial backfill)
+- Cloud Scheduler integration examples
+- Monitoring and gap detection queries
+- Troubleshooting tips
+
+**Scheduling Examples:**
 ```bash
+# Every 15 minutes
+cron: "*/15 * * * *"
+
+# Hourly
+cron: "0 * * * *"
+
+# Daily at 2 AM
+cron: "0 2 * * *"
+
+# Business hours only (9 AM - 5 PM, Mon-Fri)
+cron: "0 9-17 * * 1-5"
+```
+
+## 🐍 Python Script Examples
+
+The `run_from_python.py` script contains 6 comprehensive examples:
+
+### Example 1: Simple PostgreSQL Sync (DirectRunner)
+```python
+pipeline = DeltaFlowPipeline(runner="DirectRunner")
+result = pipeline.run_postgresql_sync(
+    postgresql_host="localhost",
+    postgresql_query="SELECT * FROM users LIMIT 100",
+    destination_project="my-project",
+    destination_dataset="test",
+    destination_table="users"
+)
+```
+
+### Example 2: Smart Sync on Dataflow
+```python
+pipeline = DeltaFlowPipeline(runner="DataflowRunner", project="my-project")
+result = pipeline.run_postgresql_sync(
+    enable_smart_sync=True,
+    smart_sync_timestamp_column="updated_at",
+    postgresql_base_query="SELECT * FROM events WHERE updated_at > '{start_timestamp}'",
+    # ... other parameters
+)
+```
+
+### Example 3: MongoDB Sync
+```python
+result = pipeline.run_mongodb_sync(
+    mongodb_host="localhost",
+    mongodb_database="app_db",
+    mongodb_collection="events",
+    mongodb_query='{"status": "active"}',
+    # ... other parameters
+)
+```
+
+See script for Examples 4-6 (dynamic configuration, multi-source, scheduled with retry).
+
+## 🧪 Local Testing Script
+
+The `local_test.sh` script provides 5 automated test scenarios:
+
+### Test 1: Basic PostgreSQL Sync
+Tests basic PostgreSQL to BigQuery synchronization without advanced features.
+
+### Test 2: PostgreSQL with Auto-Schema
+Tests automatic schema detection and BigQuery table creation with partitioning/clustering.
+
+### Test 3: MongoDB Sync
+Tests MongoDB to BigQuery synchronization with BSON type handling.
+
+### Test 4: Smart Sync (Incremental)
+Tests Smart Sync incremental updates:
+1. Initial full sync
+2. Incremental sync with timestamp filtering
+
+### Test 5: Data Validation
+Tests data validation and type conversion edge cases.
+
+**Configuration:**
+Set environment variables to customize test settings:
+```bash
+export TEST_GCP_PROJECT="my-test-project"
+export TEST_DATASET="deltaflow_test"
+export PG_HOST="localhost"
+export PG_DATABASE="testdb"
+export PG_USERNAME="postgres"
+export PG_PASSWORD="postgres"
+
+./local_test.sh all
+```
+
+## 🏭 Production Deployment Script
+
+The `production_deployment.sh` automates the complete deployment process:
+
+### Full Deployment
+```bash
+export PROJECT_ID="my-gcp-project"
+export REGION="us-central1"
+export TEMPLATE_NAME="kk-custom-data-sync-template"
+export TEMPLATE_VERSION="v1.0.0"
+
+./production_deployment.sh deploy
+```
+
+### What Gets Created
+1. **GCS Bucket**: `${PROJECT_ID}-dataflow-templates`
+   - `templates/` - Flex template files
+   - `temp/` - Temporary Dataflow files
+   - `staging/` - Staging files
+
+2. **Service Account**: `dataflow-runner@${PROJECT_ID}.iam.gserviceaccount.com`
+   - Roles: Dataflow Worker, BigQuery Data Editor, Storage Object Admin
+
+3. **Docker Image**: `gcr.io/${PROJECT_ID}/dataflow/custom-data-sync-template:v1.0.0`
+
+4. **Flex Template**: `gs://${BUCKET_NAME}/templates/${TEMPLATE_NAME}`
+
+5. **Cloud Scheduler Jobs** (optional): Automated hourly/daily sync jobs
+
+### Environment Variables
+```bash
+PROJECT_ID              # GCP project ID (required)
+REGION                  # GCP region (default: us-central1)
+TEMPLATE_NAME           # Template name (default: kk-custom-data-sync-template)
+TEMPLATE_VERSION        # Template version (default: v1.0.0)
+BUCKET_NAME             # GCS bucket (default: ${PROJECT_ID}-dataflow-templates)
+SERVICE_ACCOUNT_NAME    # Service account name (default: dataflow-runner)
+```
+
+### Deployment Commands
+```bash
+# Full deployment
+./production_deployment.sh deploy
+
+# Build Docker image only
+./production_deployment.sh build-only
+
+# Deploy template only (assumes image exists)
+./production_deployment.sh template-only
+
+# Show help
+./production_deployment.sh help
+```
+
+## 📊 Running Production Jobs
+
+After deployment, run jobs using the template:
+
+### Basic Job
+```bash
+gcloud dataflow flex-template run my-sync-job-$(date +%Y%m%d-%H%M%S) \
+  --template-file-gcs-location=gs://${BUCKET_NAME}/templates/${TEMPLATE_NAME} \
+  --region=us-central1 \
+  --parameters="data_source=postgresql" \
+  --parameters="postgresql_host=10.128.0.5" \
+  --parameters="postgresql_database=production_db" \
+  --parameters="postgresql_username=reader" \
+  --parameters="postgresql_password=***" \
+  --parameters="postgresql_query=SELECT * FROM users" \
+  --parameters="destination_bigquery_project=${PROJECT_ID}" \
+  --parameters="destination_bigquery_dataset=analytics" \
+  --parameters="destination_bigquery_table=users"
+```
+
+### Smart Sync Job
+```bash
+gcloud dataflow flex-template run smart-sync-job-$(date +%Y%m%d-%H%M%S) \
+  --template-file-gcs-location=gs://${BUCKET_NAME}/templates/${TEMPLATE_NAME} \
+  --region=us-central1 \
+  --parameters="enable_smart_sync=true" \
+  --parameters="smart_sync_timestamp_column=updated_at" \
+  --parameters="postgresql_base_query=SELECT * FROM events WHERE updated_at > '{start_timestamp}' AND updated_at <= '{end_timestamp}'" \
+  # ... other parameters
+```
+
+### With Parameters File
+```bash
+# Use config file
+gcloud dataflow flex-template run config-based-job-$(date +%Y%m%d-%H%M%S) \
+  --template-file-gcs-location=gs://${BUCKET_NAME}/templates/${TEMPLATE_NAME} \
+  --region=us-central1 \
+  --parameters-file=config.json \
+  --service-account-email=dataflow-runner@${PROJECT_ID}.iam.gserviceaccount.com \
+  --max-workers=10
+```
+
+## 🔒 Security Best Practices
+
+### 1. Credential Management
+```bash
+# Use Secret Manager instead of plain text passwords
+# Store credentials:
+echo -n "postgres_password" | gcloud secrets create postgres-password --data-file=-
+
+# Reference in parameters:
+--parameters="postgresql_password=$(gcloud secrets versions access latest --secret=postgres-password)"
+```
+
+### 2. Service Account Permissions
+- Use dedicated service account per pipeline
+- Grant minimum required permissions
+- Enable audit logging
+- Rotate credentials regularly
+
+### 3. Network Security
+```bash
+# Use VPC peering or Private Service Connect
+--parameters="subnetwork=regions/us-central1/subnetworks/my-subnet"
+--parameters="use_public_ips=false"
+```
+
+### 4. Data Encryption
+- All data encrypted in transit (TLS)
+- BigQuery data encrypted at rest by default
+- Consider Customer-Managed Encryption Keys (CMEK) for sensitive data
+
+## 📈 Monitoring and Alerting
+
+### View Job Status
+```bash
+# List recent jobs
 gcloud dataflow jobs list --region=us-central1
+
+# Describe specific job
 gcloud dataflow jobs describe JOB_ID --region=us-central1
+
+# View logs
+gcloud logging read "resource.type=dataflow_job AND resource.labels.job_id=JOB_ID" --limit=50
 ```
 
-### View job logs
+### Set Up Alerts
+Create alerts in Cloud Monitoring for:
+- Job failures
+- High worker count (cost control)
+- Low throughput
+- Sync latency > SLA
+
+### BigQuery Monitoring Queries
+```sql
+-- Check sync freshness
+SELECT
+  MAX(updated_at) as last_synced_timestamp,
+  TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), MAX(updated_at), MINUTE) as minutes_behind
+FROM `project.dataset.table`;
+
+-- Detect sync gaps
+WITH hourly_counts AS (
+  SELECT
+    TIMESTAMP_TRUNC(updated_at, HOUR) as hour,
+    COUNT(*) as records
+  FROM `project.dataset.table`
+  WHERE updated_at >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)
+  GROUP BY hour
+)
+SELECT hour, records
+FROM hourly_counts
+WHERE records = 0 OR records < 100  -- Adjust threshold
+ORDER BY hour DESC;
+```
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**1. "Query cannot be empty"**
+- Check `postgresql_base_query` format
+- Ensure placeholders `{start_timestamp}` and `{end_timestamp}` exist
+- Verify Smart Sync is enabled if using base query
+
+**2. "Template not found"**
+- Verify GCS path: `gsutil ls gs://${BUCKET_NAME}/templates/`
+- Check template deployment: `./production_deployment.sh template-only`
+- Ensure template name matches
+
+**3. "Permission denied"**
+- Check service account has required roles
+- Verify IAM bindings: `gcloud projects get-iam-policy ${PROJECT_ID}`
+- Test BigQuery access: `bq ls --project_id=${PROJECT_ID}`
+
+**4. "Connection refused" (PostgreSQL/MongoDB)**
+- Verify database host is reachable from Dataflow workers
+- Check firewall rules allow Dataflow worker IPs
+- Test connection from Cloud Shell: `psql -h HOST -U USER -d DB`
+
+**5. "BigQuery JSON validation error"**
+- Check for null bytes in strings: `\x00`
+- Verify UTF-8 encoding
+- Review data types (bytes should be base64 encoded)
+
+### Debug Mode
 ```bash
-gcloud dataflow jobs log JOB_ID --region=us-central1
+# Run locally with debug logging
+python main.py \
+  --runner=DirectRunner \
+  --data_source=postgresql \
+  --postgresql_query="SELECT * FROM users LIMIT 10" \
+  # ... other parameters
+  2>&1 | tee debug.log
 ```
 
-### Common issues
+## 📚 Additional Resources
 
-**"Query cannot be empty"**
-- Ensure `postgresql_query` or `postgresql_base_query` is provided
-- For Smart Sync, verify the base query has the correct placeholders
+- **Main Documentation**: `/home/user/deltaflow/README.md`
+- **Development Guide**: `/home/user/deltaflow/CLAUDE.md`
+- **Implementation Details**: `/home/user/deltaflow/IMPLEMENTATION_DETAILS.md`
+- **Integration Tests**: `/home/user/deltaflow/tests/integration/`
 
-**"Connection refused" / "Timeout"**
-- Check VPC network configuration
-- Verify firewall rules allow Dataflow worker IPs
-- Test database connectivity from GCE instance in same network
+## 🤝 Contributing
 
-**"BigQuery JSON validation error"**
-- Data contains null bytes or invalid UTF-8
-- Use data validation/transformation features
-- Check source data quality
+When adding new examples:
+1. Follow existing naming conventions
+2. Include comprehensive comments
+3. Add error handling
+4. Update this README
+5. Test thoroughly before committing
 
-**"Template not found"**
-- Verify template is deployed: `gsutil ls gs://BUCKET/templates/`
-- Check GCS path in gcloud command
+## 📄 License
 
----
-
-## Production Best Practices
-
-1. **Use Secret Manager**: Store database credentials in Google Secret Manager
-   ```bash
-   echo -n "password" | gcloud secrets create db-password --data-file=-
-   ```
-
-2. **Enable VPC Service Controls**: Protect data in transit and at rest
-
-3. **Set up monitoring**: Use Cloud Monitoring for job metrics and alerts
-   ```bash
-   # Create alert for failed jobs
-   gcloud alpha monitoring policies create \
-     --notification-channels=CHANNEL_ID \
-     --display-name="Dataflow Job Failures" \
-     --condition-display-name="Job Failed" \
-     --condition-threshold-value=1 \
-     --condition-threshold-duration=60s
-   ```
-
-4. **Use Cloud Scheduler**: Automate regular syncs (see Smart Sync example)
-
-5. **Enable Dataflow logs**: Send worker logs to Cloud Logging for debugging
-
-6. **Tag resources**: Use labels for cost tracking and organization
-   ```bash
-   --parameters="labels={\"team\":\"data-engineering\",\"env\":\"production\"}"
-   ```
+Apache 2.0 - See LICENSE file for details
 
 ---
 
-## Next Steps
-
-- Review main [README.md](../README.md) for architecture details
-- Check [IMPLEMENTATION_DETAILS.md](../IMPLEMENTATION_DETAILS.md) for technical deep-dive
-- See [metadata.json](../metadata.json) for all available parameters
-- Contribute your own examples via pull request!
-
----
-
-## Support
-
-For issues, questions, or contributions:
-- Open an issue on GitHub
-- Review existing issues for solutions
-- Contribute improvements via pull request
+**DeltaFlow Team** | Custom Google Cloud Dataflow Pipeline Template

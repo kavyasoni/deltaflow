@@ -1,0 +1,265 @@
+# MongoDB to BigQuery Sync Configuration
+# This YAML file demonstrates all available parameters for syncing MongoDB data to BigQuery
+# Usage: Convert to JSON for use with gcloud dataflow flex-template run --parameters-file
+
+# =============================================================================
+# DATA SOURCE CONFIGURATION
+# =============================================================================
+
+# Specify the data source type
+data_source: mongodb
+
+# =============================================================================
+# MONGODB CONNECTION PARAMETERS
+# =============================================================================
+
+# MongoDB server hostname or IP address
+mongodb_host: 10.128.0.10
+
+# MongoDB server port (default: 27017)
+mongodb_port: "27017"
+
+# MongoDB database name
+mongodb_database: app_production
+
+# MongoDB collection name to sync
+mongodb_collection: events
+
+# MongoDB authentication credentials (optional for non-authenticated instances)
+# SECURITY NOTE: In production, use Secret Manager instead of plain text
+mongodb_username: dataflow_reader
+mongodb_password: "${SECRET_MANAGER_MONGODB_PASSWORD}"
+
+# Alternative: Use full MongoDB connection string (overrides individual parameters)
+# Useful for MongoDB Atlas, replica sets, or complex connection scenarios
+# Example formats:
+#   - Simple: mongodb://username:password@host:port/database
+#   - Replica Set: mongodb://host1:27017,host2:27017,host3:27017/database?replicaSet=myReplicaSet
+#   - Atlas: mongodb+srv://username:password@cluster.mongodb.net/database
+# mongodb_connection_string: "mongodb://dataflow_reader:password@10.128.0.10:27017/app_production?authSource=admin"
+
+# MongoDB query filter as JSON string
+# Use MongoDB query syntax to filter documents
+# Examples:
+#   - All documents: "{}"
+#   - Status filter: '{"status": "active"}'
+#   - Date range: '{"created_at": {"$gte": {"$date": "2024-01-01T00:00:00Z"}}}'
+#   - Complex: '{"$and": [{"status": "active"}, {"age": {"$gt": 18}}]}'
+mongodb_query: '{"status": "processed", "event_type": {"$in": ["click", "view", "purchase"]}}'
+
+# MongoDB projection as JSON string to limit fields
+# Reduces data transfer by only fetching needed fields
+# Examples:
+#   - Include fields: '{"_id": 1, "name": 1, "email": 1, "created_at": 1}'
+#   - Exclude fields: '{"internal_notes": 0, "debug_info": 0}'
+#   - Mixed (MongoDB style): '{"name": 1, "email": 1, "_id": 0}'
+mongodb_projection: '{"_id": 1, "user_id": 1, "event_type": 1, "event_data": 1, "created_at": 1, "metadata": 1}'
+
+# =============================================================================
+# BIGQUERY DESTINATION PARAMETERS
+# =============================================================================
+
+# Destination BigQuery project ID
+destination_bigquery_project: my-gcp-project
+
+# Destination BigQuery dataset name
+destination_bigquery_dataset: analytics
+
+# Destination BigQuery table name
+destination_bigquery_table: events_sync
+
+# Write disposition controls how data is written to the destination table
+# Options:
+#   WRITE_APPEND: Append data to existing table (default)
+#   WRITE_TRUNCATE: Overwrite table with new data
+#   WRITE_EMPTY: Only write if table is empty
+write_disposition: WRITE_APPEND
+
+# Create disposition controls whether to create table if it doesn't exist
+# Options:
+#   CREATE_IF_NEEDED: Create table if it doesn't exist (default)
+#   CREATE_NEVER: Fail if table doesn't exist
+create_disposition: CREATE_IF_NEEDED
+
+# =============================================================================
+# AUTO-SCHEMA DETECTION FOR MONGODB
+# =============================================================================
+
+# Enable automatic schema detection from MongoDB collection
+# When enabled, DeltaFlow will:
+# 1. Sample MongoDB documents to infer schema
+# 2. Map BSON types to BigQuery types
+# 3. Handle nested objects and arrays (converted to JSON type)
+# 4. Create optimized BigQuery table
+enable_auto_schema: "true"
+
+# Source collection for schema detection
+# For MongoDB: database.collection format
+source_table_for_schema: app_production.events
+
+# Field to use for BigQuery table partitioning
+# Recommended: Use a timestamp field for time-based partitioning
+# Note: MongoDB _id ObjectId can be used if converted to timestamp
+partition_field: created_at
+
+# Comma-separated list of fields for BigQuery table clustering
+# Clustering optimizes queries that filter on these columns
+clustering_fields: event_type,user_id
+
+# Delete existing BigQuery table before creating new one
+# WARNING: Use with caution - this will delete all existing data
+delete_existing_table: "false"
+
+# =============================================================================
+# MONGODB-SPECIFIC DATA HANDLING
+# =============================================================================
+
+# MongoDB documents with nested objects and arrays are handled as follows:
+# 1. Nested objects → BigQuery JSON type
+# 2. Arrays → BigQuery ARRAY type (if homogeneous) or JSON type (if mixed)
+# 3. ObjectId → BigQuery STRING type (converted to hex string)
+# 4. Date → BigQuery TIMESTAMP type
+# 5. Binary data → BigQuery BYTES type (base64 encoded)
+# 6. Decimal128 → BigQuery NUMERIC type
+
+# Example MongoDB document:
+# {
+#   "_id": ObjectId("507f1f77bcf86cd799439011"),
+#   "user_id": 12345,
+#   "event_type": "purchase",
+#   "event_data": {
+#     "product_id": "PROD-123",
+#     "price": 29.99,
+#     "currency": "USD"
+#   },
+#   "tags": ["promotion", "first-purchase"],
+#   "created_at": ISODate("2024-01-15T10:30:00Z")
+# }
+#
+# Becomes BigQuery row:
+# {
+#   "_id": "507f1f77bcf86cd799439011",
+#   "user_id": 12345,
+#   "event_type": "purchase",
+#   "event_data": {"product_id": "PROD-123", "price": 29.99, "currency": "USD"},
+#   "tags": ["promotion", "first-purchase"],
+#   "created_at": "2024-01-15 10:30:00 UTC"
+# }
+
+# =============================================================================
+# DATA TRANSFORMATION (Optional)
+# =============================================================================
+
+# JSON string with transformation configuration
+# Useful for renaming fields, type conversions, or flattening nested objects
+# transformation_config: |
+#   {
+#     "field_mappings": {
+#       "_id": "id",
+#       "user_id": "uid"
+#     },
+#     "flatten_nested": {
+#       "event_data.product_id": "product_id",
+#       "event_data.price": "price"
+#     }
+#   }
+
+# =============================================================================
+# ADVANCED CONFIGURATION
+# =============================================================================
+
+# Batch size for MongoDB cursor iteration
+# Higher values improve throughput but increase memory usage
+# Recommended: 1000-5000 for most use cases
+# Note: MongoDB cursor batch size may be limited by server configuration
+batch_size: 2000
+
+# Maximum number of retries for failed operations
+# Applies to MongoDB connections and BigQuery writes
+max_retries: 3
+
+# =============================================================================
+# USAGE EXAMPLES
+# =============================================================================
+
+# 1. Convert YAML to JSON:
+#    python -c "import yaml, json; print(json.dumps(yaml.safe_load(open('config_mongodb.yaml'))))" > config_mongodb.json
+
+# 2. Run with Dataflow template:
+#    gcloud dataflow flex-template run mongodb-sync-job-$(date +%Y%m%d-%H%M%S) \
+#      --template-file-gcs-location=gs://${BUCKET_NAME}/templates/${TEMPLATE_NAME} \
+#      --region=us-central1 \
+#      --parameters-file=config_mongodb.json \
+#      --worker-machine-type=n1-standard-4 \
+#      --num-workers=2
+
+# 3. Test locally with DirectRunner (small dataset):
+#    python main.py \
+#      --runner=DirectRunner \
+#      --data_source=mongodb \
+#      --mongodb_host=localhost \
+#      --mongodb_port=27017 \
+#      --mongodb_database=testdb \
+#      --mongodb_collection=test_collection \
+#      --mongodb_query='{"status": "active"}' \
+#      --destination_bigquery_project=my-project \
+#      --destination_bigquery_dataset=test \
+#      --destination_bigquery_table=mongodb_test
+
+# 4. Sync from MongoDB Atlas:
+#    # Use mongodb_connection_string parameter
+#    mongodb_connection_string: "mongodb+srv://user:pass@cluster.mongodb.net/mydb?retryWrites=true&w=majority"
+
+# =============================================================================
+# PRODUCTION BEST PRACTICES FOR MONGODB
+# =============================================================================
+
+# 1. Connection Management:
+#    - Use connection string for replica sets (ensures high availability)
+#    - Enable retryWrites=true in connection string
+#    - Use read preference=secondary for analytics workloads
+#    - Example: "mongodb://host1,host2,host3/db?replicaSet=rs0&readPreference=secondary"
+
+# 2. Query Optimization:
+#    - Add indexes on fields used in mongodb_query filters
+#    - Use projection to fetch only needed fields
+#    - Avoid $where operator (slow, doesn't use indexes)
+#    - Test queries in MongoDB shell before using in pipeline
+
+# 3. Data Type Handling:
+#    - Ensure timestamp fields use ISODate, not strings
+#    - Be aware of ObjectId → string conversion (may impact joins)
+#    - Test nested object handling before production deployment
+#    - Consider flattening deeply nested objects for better BigQuery performance
+
+# 4. Performance Tuning:
+#    - Increase batch_size for better throughput (2000-5000)
+#    - Use appropriate Dataflow worker types (n1-standard-4 or n1-highmem-4)
+#    - Monitor MongoDB server load during sync
+#    - Schedule large syncs during off-peak hours
+
+# 5. Schema Evolution:
+#    - MongoDB is schema-less; schema detection samples documents
+#    - New fields in MongoDB will be added to BigQuery (if enable_auto_schema=true)
+#    - Test schema detection with representative sample of documents
+#    - Consider manual schema definition for critical tables
+
+# 6. Security:
+#    - Use Secret Manager for mongodb_password
+#    - Enable MongoDB authentication in production
+#    - Use TLS/SSL for MongoDB connections (add ?ssl=true to connection string)
+#    - Restrict Dataflow service account permissions
+#    - Use VPC peering or Private Service Connect for network security
+
+# 7. Monitoring:
+#    - Monitor MongoDB server metrics (connections, CPU, memory)
+#    - Track Dataflow job throughput (elements/sec)
+#    - Set up alerts for failed jobs
+#    - Monitor BigQuery table growth
+#    - Review slow queries in MongoDB profiler
+
+# 8. Large Collections:
+#    - For multi-TB collections, consider sharding the sync by date ranges
+#    - Use mongodb_query to partition data: '{"created_at": {"$gte": "...", "$lt": "..."}}'
+#    - Run multiple parallel Dataflow jobs for different date ranges
+#    - Monitor Dataflow worker memory usage

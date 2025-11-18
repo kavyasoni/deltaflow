@@ -1,0 +1,302 @@
+# Smart Sync Configuration - Incremental Data Synchronization
+# This configuration demonstrates DeltaFlow's Smart Sync feature for efficient incremental updates
+# Smart Sync queries the destination BigQuery table for the latest timestamp and only syncs new data
+# Perfect for scheduled jobs that run hourly, daily, or weekly
+
+# =============================================================================
+# SMART SYNC OVERVIEW
+# =============================================================================
+# Smart Sync works by:
+# 1. Querying destination BigQuery table: SELECT MAX(updated_at) FROM destination_table
+# 2. Using the result as start_timestamp in the source query
+# 3. Setting end_timestamp to current UTC time
+# 4. Constructing query: WHERE updated_at > '{start_timestamp}' AND updated_at <= '{end_timestamp}'
+#
+# Benefits:
+# - Dramatically reduces data transfer (only new/updated records)
+# - Faster pipeline execution (seconds instead of hours)
+# - Lower costs (less data processed)
+# - Enables frequent sync schedules (every 15 minutes, hourly, etc.)
+
+# =============================================================================
+# DATA SOURCE CONFIGURATION
+# =============================================================================
+
+data_source: postgresql
+
+# =============================================================================
+# POSTGRESQL CONNECTION
+# =============================================================================
+
+postgresql_host: 10.128.0.5
+postgresql_port: "5432"
+postgresql_database: production_db
+postgresql_username: dataflow_reader
+postgresql_password: "${SECRET_MANAGER_POSTGRESQL_PASSWORD}"
+
+# Table name for metadata (used in logs and monitoring)
+postgresql_table: user_events
+
+# =============================================================================
+# SMART SYNC CONFIGURATION (THE MAGIC)
+# =============================================================================
+
+# ENABLE SMART SYNC
+enable_smart_sync: "true"
+
+# Timestamp column used for incremental sync detection
+# This column must:
+# - Exist in both source and destination tables
+# - Be updated whenever a record changes
+# - Be of type TIMESTAMP or DATETIME
+# - Have an index for optimal query performance
+smart_sync_timestamp_column: updated_at
+
+# BASE QUERY TEMPLATE WITH PLACEHOLDERS
+# CRITICAL: Include {start_timestamp} and {end_timestamp} placeholders
+# These will be automatically replaced with runtime values
+# Example values:
+#   {start_timestamp} → '2024-11-17 15:30:00'
+#   {end_timestamp} → '2024-11-18 07:00:00'
+postgresql_base_query: |
+  SELECT
+    id,
+    user_id,
+    event_type,
+    event_data,
+    created_at,
+    updated_at,
+    processed_at
+  FROM user_events
+  WHERE updated_at > '{start_timestamp}'
+    AND updated_at <= '{end_timestamp}'
+    AND is_deleted = false
+  ORDER BY updated_at ASC
+
+# EMPTY TABLE BEHAVIOR
+# What to do when destination BigQuery table is empty (first run)?
+# Options:
+#   "true": Sync ALL historical data (start_timestamp='1900-01-01 00:00:00')
+#   "false": Only sync recent data based on fallback_days parameter
+sync_all_on_empty_table: "true"
+
+# FALLBACK DAYS
+# Only used when sync_all_on_empty_table="false"
+# Syncs data from the last N days on first run
+# Example: "7" means sync last 7 days of data
+fallback_days: "7"
+
+# FALLBACK HOURS
+# If Smart Sync query fails (e.g., destination table doesn't exist yet),
+# fall back to syncing last N hours of data
+# This prevents pipeline from failing completely
+smart_sync_fallback_hours: "24"
+
+# =============================================================================
+# BIGQUERY DESTINATION
+# =============================================================================
+
+destination_bigquery_project: my-gcp-project
+destination_bigquery_dataset: analytics
+destination_bigquery_table: user_events_sync
+
+# IMPORTANT: Use WRITE_APPEND with Smart Sync for incremental updates
+write_disposition: WRITE_APPEND
+
+create_disposition: CREATE_IF_NEEDED
+
+# =============================================================================
+# AUTO-SCHEMA WITH OPTIMIZATIONS
+# =============================================================================
+
+enable_auto_schema: "true"
+source_table_for_schema: public.user_events
+
+# Partition on the sync timestamp column for optimal performance
+partition_field: updated_at
+
+# Cluster on frequently queried columns
+clustering_fields: user_id,event_type
+
+delete_existing_table: "false"
+
+# =============================================================================
+# ADVANCED CONFIGURATION
+# =============================================================================
+
+batch_size: 2000
+max_retries: 3
+
+# =============================================================================
+# SCHEDULING SMART SYNC JOBS
+# =============================================================================
+
+# Smart Sync is designed for automated scheduling. Here are recommended schedules:
+
+# 1. HIGH-FREQUENCY SYNC (Every 15 minutes)
+# Use for: Real-time analytics, dashboards, operational monitoring
+# Cloud Scheduler cron: "*/15 * * * *"
+# Expected latency: 15-30 minutes
+# Command:
+# gcloud scheduler jobs create http user-events-sync-15min \
+#   --location=us-central1 \
+#   --schedule="*/15 * * * *" \
+#   --time-zone="UTC" \
+#   --uri="https://dataflow.googleapis.com/v1b3/projects/my-gcp-project/locations/us-central1/flexTemplates:launch" \
+#   --http-method=POST \
+#   --message-body-from-file=launch_config.json
+
+# 2. HOURLY SYNC
+# Use for: Standard analytics, reporting
+# Cloud Scheduler cron: "0 * * * *" (run at minute 0 of every hour)
+# Expected latency: 1-2 hours
+# Example: Run at 00:00, 01:00, 02:00, etc.
+
+# 3. EVERY 2 HOURS
+# Use for: Batch analytics, cost-optimized pipelines
+# Cloud Scheduler cron: "0 */2 * * *"
+# Expected latency: 2-3 hours
+
+# 4. DAILY SYNC
+# Use for: Daily reports, large datasets
+# Cloud Scheduler cron: "0 2 * * *" (run at 2 AM daily)
+# Expected latency: 24-26 hours
+
+# 5. BUSINESS HOURS ONLY
+# Use for: Cost optimization, non-critical data
+# Cloud Scheduler cron: "0 9-17 * * 1-5" (hourly, 9 AM to 5 PM, Monday-Friday)
+
+# =============================================================================
+# MONITORING SMART SYNC
+# =============================================================================
+
+# Key metrics to monitor:
+# 1. Sync latency: Time between source update and BigQuery availability
+# 2. Records processed per job: Should be consistent (spikes indicate issues)
+# 3. Job duration: Should be stable (increases may indicate performance issues)
+# 4. Timestamp gaps: Query destination table to detect missing time ranges
+# 5. Duplicate records: Should be zero (indicates query logic issues)
+
+# Query to check sync status:
+# SELECT
+#   MAX(updated_at) as last_synced_timestamp,
+#   TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), MAX(updated_at), MINUTE) as minutes_behind,
+#   COUNT(*) as total_records
+# FROM `my-gcp-project.analytics.user_events_sync`
+
+# Query to detect gaps in sync:
+# WITH time_buckets AS (
+#   SELECT
+#     TIMESTAMP_TRUNC(updated_at, HOUR) as hour_bucket,
+#     COUNT(*) as records
+#   FROM `my-gcp-project.analytics.user_events_sync`
+#   WHERE updated_at >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)
+#   GROUP BY hour_bucket
+# )
+# SELECT
+#   hour_bucket,
+#   records,
+#   LAG(hour_bucket) OVER (ORDER BY hour_bucket) as prev_hour,
+#   TIMESTAMP_DIFF(hour_bucket, LAG(hour_bucket) OVER (ORDER BY hour_bucket), HOUR) as hours_gap
+# FROM time_buckets
+# WHERE TIMESTAMP_DIFF(hour_bucket, LAG(hour_bucket) OVER (ORDER BY hour_bucket), HOUR) > 1
+# ORDER BY hour_bucket DESC
+
+# =============================================================================
+# SMART SYNC BEST PRACTICES
+# =============================================================================
+
+# 1. SOURCE TABLE REQUIREMENTS:
+#    - Add index on timestamp column: CREATE INDEX idx_updated_at ON user_events(updated_at);
+#    - Ensure timestamp is updated on every record change (use database triggers if needed)
+#    - Use TIMESTAMP type, not VARCHAR storing timestamps
+#    - Consider timezone consistency (UTC recommended)
+
+# 2. QUERY OPTIMIZATION:
+#    - Include ORDER BY on timestamp column for consistent processing
+#    - Add WHERE clauses to filter out soft-deleted records
+#    - Use LIMIT clause for testing (remove in production)
+#    - Test query performance in source database before deploying
+
+# 3. ERROR HANDLING:
+#    - Set smart_sync_fallback_hours to reasonable value (24-48 hours)
+#    - Monitor failed jobs and investigate timestamp issues
+#    - Use sync_all_on_empty_table="true" for first run simplicity
+#    - Implement alerting for sync gaps > 2x schedule frequency
+
+# 4. TESTING:
+#    - Test first run with empty destination table
+#    - Test incremental run with existing data
+#    - Test behavior when source has no new data (should complete quickly)
+#    - Test with large time gaps (e.g., after 7-day outage)
+
+# 5. SCHEMA CHANGES:
+#    - Adding columns: Auto-schema will detect and add to BigQuery
+#    - Removing columns: Manually drop from BigQuery or they'll remain
+#    - Type changes: May require manual BigQuery schema update
+#    - Test schema changes in dev environment first
+
+# 6. TROUBLESHOOTING:
+#    - "Query cannot be empty": Check postgresql_base_query format, ensure placeholders exist
+#    - No data synced: Verify timestamp column exists in both source and destination
+#    - Duplicate data: Check if query has correct > (not >=) operator
+#    - Missing data: Check for timezone mismatches between source and BigQuery
+#    - Slow queries: Add index on timestamp column in source database
+
+# =============================================================================
+# EXAMPLE: FULL CLOUD SCHEDULER SETUP
+# =============================================================================
+
+# Step 1: Create service account for Dataflow
+# gcloud iam service-accounts create dataflow-smart-sync \
+#   --display-name="Dataflow Smart Sync Service Account"
+
+# Step 2: Grant necessary permissions
+# gcloud projects add-iam-policy-binding my-gcp-project \
+#   --member="serviceAccount:dataflow-smart-sync@my-gcp-project.iam.gserviceaccount.com" \
+#   --role="roles/dataflow.worker"
+
+# gcloud projects add-iam-policy-binding my-gcp-project \
+#   --member="serviceAccount:dataflow-smart-sync@my-gcp-project.iam.gserviceaccount.com" \
+#   --role="roles/bigquery.dataEditor"
+
+# Step 3: Create Cloud Scheduler job (every 2 hours)
+# gcloud scheduler jobs create http user-events-smart-sync \
+#   --location=us-central1 \
+#   --schedule="0 */2 * * *" \
+#   --time-zone="UTC" \
+#   --uri="https://dataflow.googleapis.com/v1b3/projects/my-gcp-project/locations/us-central1/flexTemplates:launch" \
+#   --http-method=POST \
+#   --oauth-service-account-email="dataflow-smart-sync@my-gcp-project.iam.gserviceaccount.com" \
+#   --message-body='{
+#     "launchParameter": {
+#       "jobName": "user-events-smart-sync",
+#       "parameters": {
+#         "data_source": "postgresql",
+#         "enable_smart_sync": "true",
+#         "smart_sync_timestamp_column": "updated_at",
+#         "postgresql_base_query": "SELECT * FROM user_events WHERE updated_at > '\''{start_timestamp}'\'' AND updated_at <= '\''{end_timestamp}'\'' ORDER BY updated_at ASC",
+#         "postgresql_host": "10.128.0.5",
+#         "postgresql_database": "production_db",
+#         "postgresql_username": "dataflow_reader",
+#         "postgresql_password": "...",
+#         "destination_bigquery_project": "my-gcp-project",
+#         "destination_bigquery_dataset": "analytics",
+#         "destination_bigquery_table": "user_events_sync",
+#         "enable_auto_schema": "true",
+#         "source_table_for_schema": "public.user_events"
+#       },
+#       "environment": {
+#         "serviceAccountEmail": "dataflow-smart-sync@my-gcp-project.iam.gserviceaccount.com",
+#         "tempLocation": "gs://my-gcp-project-dataflow-temp/temp",
+#         "maxWorkers": 5
+#       },
+#       "containerSpecGcsPath": "gs://my-gcp-project-dataflow-templates/templates/kk-custom-data-sync-template"
+#     }
+#   }'
+
+# Step 4: Test the scheduler job manually
+# gcloud scheduler jobs run user-events-smart-sync --location=us-central1
+
+# Step 5: Monitor the job
+# gcloud dataflow jobs list --region=us-central1 --filter="name:user-events-smart-sync"
